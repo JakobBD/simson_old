@@ -14,6 +14,23 @@ def visualize_mfa(mfa):
     if cfg.visualize['production']['do_visualize']:
         visualize_production(mfa)
 
+
+def visualize_production(mfa: MFASystem):
+    fig, ax = visualize_array(mfa.stocks['in_use'].inflow,
+                              intra_line_dim='Time',
+                              tile_dim='Good',
+                              slice_dict={'r': 'World'},
+                              summed_dims=['m', 'e'],
+                              label_in='Modeled')
+    fig, ax = visualize_array(mfa.parameters['production'],
+                              intra_line_dim='Historic Time',
+                              tile_dim='Good',
+                              slice_dict={'r': 'World'},
+                              label_in='Historic Production',
+                              fig_ax=(fig, ax))
+    show_and_save_pyplot(fig, 'production')
+
+
 def visualize_stock(gdppc, historic_gdppc, stocks, historic_stocks, stocks_pc, historic_stocks_pc):
     if not cfg.visualize['stock']['do_visualize']:
         return
@@ -46,17 +63,20 @@ def visualize_stock(gdppc, historic_gdppc, stocks, historic_stocks, stocks_pc, h
                               fig_ax=(fig, ax))
     show_and_save_pyplot(fig, 'stock')
 
+
 def show_and_save_pyplot(fig, name):
     if cfg.do_save_figs:
         plt.savefig(figure_path(f"{name}.png"))
     if cfg.do_show_figs:
         plt.show()
 
+
 def show_and_save_plotly(fig: pl.graph_objs.Figure, name):
     if cfg.do_save_figs:
         fig.write_image(figure_path(f"{name}.png"))
     if cfg.do_show_figs:
         fig.show()
+
 
 def visualize_array(array: NamedDimArray, intra_line_dim, x_array: NamedDimArray=None, tile_dim=None, linecolor_dim=None, slice_dict=None, summed_dims=None, fig_ax=None, title=None, label_in=None):
 
@@ -99,17 +119,20 @@ def plot_tile(ax_tile, array_tile, x_tile, intra_line_dim, linecolor_dim, label_
         ax_tile.plot(x, array_line.values, label=label)
     ax_tile.set_xlabel(intra_line_dim)
 
+
 def dim_item_name_by_index(array: NamedDimArray, dim_name, i_item):
     if dim_name is None:
         return None
     else:
         return array.dims[dim_name].items[i_item]
 
+
 def sum_and_slice(array: NamedDimArray, slice_dict, summed_dims):
     array = array.slice_obj(slice_dict).to_nda()
     if summed_dims is not None:
         array = array.sum_nda_over(summed_dims)
     return array
+
 
 def list_of_slices(array, dim_to_slice, n_return_none=1):
     if array is None:
@@ -120,12 +143,14 @@ def list_of_slices(array, dim_to_slice, n_return_none=1):
         arrays_tile = [array]
     return arrays_tile
 
+
 def get_label(array: NamedDimArray, linecolor_dim, j, label_in):
     if label_in is not None:
         label = label_in
     else:
         label = dim_item_name_by_index(array, linecolor_dim, j)
     return label
+
 
 def get_fig_ax(array, dim_tiles, fig_ax):
     if fig_ax is None:
@@ -140,27 +165,12 @@ def get_fig_ax(array, dim_tiles, fig_ax):
         nx, ny = ax.shape
     return fig, ax, nx, ny
 
+
 def get_tiles(array, dim_tiles):
     n_tiles = array.dims[dim_tiles].len
     nx = int(np.ceil(np.sqrt(n_tiles)))
     ny = int(np.ceil(n_tiles / nx))
     return nx, ny
-
-
-def visualize_production(mfa: MFASystem):
-    fig, ax = visualize_array(mfa.stocks['in_use'].inflow,
-                              intra_line_dim='Time',
-                              tile_dim='Good',
-                              slice_dict={'r': 'World'},
-                              summed_dims=['m', 'e'],
-                              label_in='Modeled')
-    fig, ax = visualize_array(mfa.parameters['production'],
-                              intra_line_dim='Historic Time',
-                              tile_dim='Good',
-                              slice_dict={'r': 'World'},
-                              label_in='Historic Production',
-                              fig_ax=(fig, ax))
-    show_and_save_pyplot(fig, 'production')
 
 
 # Here, some general, non-model-specific display names can be set
@@ -169,9 +179,11 @@ display_names = {
 }
 display_names_model = {}
 
+
 def set_display_names_model(mfa):
     global display_names_model
     display_names_model = mfa.display_names
+
 
 def dn(st):
     display_names_loc = display_names | display_names_model

@@ -190,6 +190,9 @@ class NamedDimArray(object):
             slice_obj.values_pointer[...] = item.sum_values_to(slice_obj.dim_letters)
 
     def to_df(self):
+        """
+        Export to pandas dataframe, with a column for each dimension serving as indices (though not being a pandas index), and a column 'value' for the values.
+        """
         index = pd.MultiIndex.from_product([d.items for d in self.dims], names=self.dims.names)
         df = index.to_frame(index=False)
         df['value'] = self.values.flatten()
