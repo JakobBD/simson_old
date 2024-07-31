@@ -128,7 +128,7 @@ def dim_item_name_by_index(array: NamedDimArray, dim_name, i_item):
 
 
 def sum_and_slice(array: NamedDimArray, slice_dict, summed_dims):
-    array = array.slice_obj(slice_dict).to_nda()
+    array = array.sub_array_handler(slice_dict).to_nda()
     if summed_dims is not None:
         array = array.sum_nda_over(summed_dims)
     return array
@@ -138,7 +138,7 @@ def list_of_slices(array, dim_to_slice, n_return_none=1):
     if array is None:
         return [None] * n_return_none
     elif dim_to_slice is not None:
-        arrays_tile = [array.slice_obj({array.dims[dim_to_slice].letter: item}).to_nda() for item in array.dims[dim_to_slice].items]
+        arrays_tile = [array.sub_array_handler({array.dims[dim_to_slice].letter: item}).to_nda() for item in array.dims[dim_to_slice].items]
     else:
         arrays_tile = [array]
     return arrays_tile
@@ -206,12 +206,13 @@ def visualize_mfa_sankey(mfa: MFASystem):
     flows = {f for f in mfa.flows.values() if (f.name not in exclude_flows
                                                and f.from_process_id not in exclude_node_ids
                                                and f.to_process_id not in exclude_node_ids)}
+
     if color_scheme == 'antique':
-        material_colors = pl.colors.qualitative.Antique[:mfa.dims['Material'].len]
+        material_colors = pl.colors.qualitative.Antique[:mfa.dims[cfg.product_dimension_name].len]
     elif color_scheme == 'viridis':
-        material_colors = pl.colors.sample_colorscale('Viridis', mfa.dims['Material'].len + 1, colortype='rgb')
+        material_colors = pl.colors.sample_colorscale('Viridis', mfa.dims[cfg.product_dimension_name].len + 1, colortype='rgb')
     elif color_scheme == 'blueish':
-        material_colors = [f'hsv({10 * i + 200},40,150)' for i in range(mfa.dims['Material'].len)]
+        material_colors = [f'hsv({10 * i + 200},40,150)' for i in range(mfa.dims[cfg.product_dimension_name].len)]
     else:
         raise Exception('invalid color scheme')
 
@@ -221,14 +222,16 @@ def visualize_mfa_sankey(mfa: MFASystem):
         for key, value in kwargs.items():
             link_dict[key].append(value)
 
+    product_dim_letter = cfg.product_dimension_name[0].lower()
+
     for f in flows:
         source = ids_in_sankey[f.from_process_id]
         target = ids_in_sankey[f.to_process_id]
         label = dn(f.name)
 
         id_orig = f.dims.string
-        has_materials = 'm' in id_orig
-        id_target = f"ter{'m' if has_materials else ''}"
+        has_materials = product_dim_letter in id_orig
+        id_target = f"ter{product_dim_letter if has_materials else ''}{'s' if cfg.has_scenarios else ''}"
         values = np.einsum(f"{id_orig}->{id_target}", f.values)
 
         if carbon_only:
@@ -236,11 +239,25 @@ def visualize_mfa_sankey(mfa: MFASystem):
         else:
             values = np.sum(values, axis = 1)
 
-        values = values[mfa.dims['Time'].index(year),region_id,...]
+        time_index = mfa.dims['Time'].index(year)  # todo delete
+        if cfg.has_scenarios:
+
+            try:
+                values = values[mfa.dims['Time'].index(year),region_id,..., 1]
+            except IndexError:
+                test = values[mfa.dims['Time'].index(year), region_id, ...]
+                a=0
+            # choose SSP2 as default scenario
+            # TODO: Implement Scenario switch
+        else:   # MFA doesn't use scenarios
+            values = values[mfa.dims['Time'].index(year), region_id, ...]
 
         if has_materials:
             for im, c in enumerate(material_colors):
-                add_link(label=label, source=source, target=target, color=c, value=values[im])
+                try:
+                    add_link(label=label, source=source, target=target, color=c, value=values[im])
+                except IndexError:
+                    a=0
         else:
             add_link(label=label, source=source, target=target, color='hsl(230,20,70)', value=values)
 
